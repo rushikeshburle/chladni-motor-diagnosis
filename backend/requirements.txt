@@ -7,5 +7,6 @@ pillow
 scikit-learn
 scipy
 scikit-image
+SQLAlchemy
 python-dotenv
 pyyaml
