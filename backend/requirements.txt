@@ -10,3 +10,4 @@ scikit-image
 SQLAlchemy
 python-dotenv
 pyyaml
+reportlab 
