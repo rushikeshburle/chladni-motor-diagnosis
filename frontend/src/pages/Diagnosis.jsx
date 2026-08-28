@@ -1,15 +1,21 @@
 ```jsx
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { RotateCcw, Zap, AlertTriangle, Cpu } from 'lucide-react'
+import {
+  RotateCcw,
+  Zap,
+  AlertTriangle,
+  Cpu
+} from 'lucide-react'
+
 import ImageUploader from '../components/ImageUploader'
 import VideoUploader from '../components/VideoUploader'
 import TextInput from '../components/TextInput'
 import ProcessingStatus from '../components/ProcessingStatus'
 
+// LIVE BACKEND
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  'https://chladni-motor-diagnosis-1.onrender.com'
+  'https://chladni-motor-diagnosis-1.onrender.com/api'
 
 function Diagnosis() {
   const navigate = useNavigate()
@@ -30,101 +36,176 @@ function Diagnosis() {
   const [processingSteps, setProcessingSteps] = useState([])
   const [error, setError] = useState(null)
 
+  // ==========================================
+  // ANALYZE MOTOR
+  // ==========================================
+
   const handleAnalyze = async () => {
-    if (!imageData && !videoData && !textData.trim()) {
-      setError('Please provide at least one input (image, video, or text)')
+
+    if (
+      !imageData &&
+      !videoData &&
+      !textData.trim()
+    ) {
+      setError(
+        'Please provide at least one input: image, video, or text.'
+      )
       return
     }
 
     setIsProcessing(true)
     setError(null)
-    setProcessingSteps(['Initializing diagnosis...'])
+
+    setProcessingSteps([
+      'Initializing diagnosis...'
+    ])
 
     try {
+
       setProcessingSteps(prev => [
         ...prev,
         'Validating inputs...'
       ])
 
       const requestData = {
-        motor_id: motorInfo.motorId || null,
-        motor_type: motorInfo.motorType || null,
-        rpm: motorInfo.rpm ? parseFloat(motorInfo.rpm) : null,
-        load: motorInfo.load ? parseFloat(motorInfo.load) : null,
-        temperature: motorInfo.temperature
-          ? parseFloat(motorInfo.temperature)
-          : null,
 
-        image_path: imageData?.file_path || null,
-        video_path: videoData?.file_path || null,
-        text_input: textData.trim() || null,
+        motor_id:
+          motorInfo.motorId || null,
+
+        motor_type:
+          motorInfo.motorType || null,
+
+        rpm:
+          motorInfo.rpm
+            ? parseFloat(motorInfo.rpm)
+            : null,
+
+        load:
+          motorInfo.load
+            ? parseFloat(motorInfo.load)
+            : null,
+
+        temperature:
+          motorInfo.temperature
+            ? parseFloat(motorInfo.temperature)
+            : null,
+
+        image_path:
+          imageData?.file_path ||
+          imageData?.filename ||
+          null,
+
+        video_path:
+          videoData?.file_path ||
+          videoData?.filename ||
+          null,
+
+        text_input:
+          textData.trim() || null,
 
         demo_mode: true
       }
 
       setProcessingSteps(prev => [
         ...prev,
-        'Connecting to diagnosis server...'
+        'Connecting to analysis server...'
       ])
 
+      // ==========================================
+      // SEND REQUEST TO RENDER BACKEND
+      // ==========================================
+
       const response = await fetch(
-        `${API_BASE_URL}/api/diagnosis/analyze`,
+        `${API_BASE_URL}/diagnosis/analyze`,
         {
           method: 'POST',
+
           headers: {
             'Content-Type': 'application/json'
           },
+
           body: JSON.stringify(requestData)
         }
       )
 
+      let result
+
+      try {
+        result = await response.json()
+      } catch {
+        throw new Error(
+          'Server returned an invalid response.'
+        )
+      }
+
       if (!response.ok) {
+
         throw new Error(
-          `Server error: ${response.status} ${response.statusText}`
+          result?.detail ||
+          result?.error ||
+          `Server error: ${response.status}`
         )
+
       }
 
-      const result = await response.json()
+      if (!result.success) {
 
-      if (result.success) {
-        setProcessingSteps(prev => [
-          ...prev,
-          'Analysis complete!',
-          'Generating results...'
-        ])
-
-        sessionStorage.setItem(
-          'diagnosisResults',
-          JSON.stringify(result)
-        )
-
-        setTimeout(() => {
-          navigate('/results')
-        }, 1000)
-      } else {
         throw new Error(
-          result.error || 'Diagnosis analysis failed'
+          result.error ||
+          'Motor analysis failed.'
         )
+
       }
+
+      // ==========================================
+      // SUCCESS
+      // ==========================================
+
+      setProcessingSteps(prev => [
+        ...prev,
+        'Analysis complete!',
+        'Generating results...'
+      ])
+
+      sessionStorage.setItem(
+        'diagnosisResults',
+        JSON.stringify(result)
+      )
+
+      setTimeout(() => {
+        navigate('/results')
+      }, 1000)
 
     } catch (err) {
-      console.error('Diagnosis error:', err)
+
+      console.error(
+        'Diagnosis error:',
+        err
+      )
 
       setError(
         err.message ||
-        'Failed to connect to diagnosis server'
+        'Unable to connect to the backend server.'
       )
 
       setProcessingSteps(prev => [
         ...prev,
         `Error: ${err.message}`
       ])
+
     } finally {
+
       setIsProcessing(false)
+
     }
   }
 
+  // ==========================================
+  // RESET
+  // ==========================================
+
   const handleReset = () => {
+
     setImageData(null)
     setVideoData(null)
     setTextData('')
@@ -139,18 +220,33 @@ function Diagnosis() {
 
     setError(null)
     setProcessingSteps([])
+
   }
 
+  // ==========================================
+  // PROCESSING SCREEN
+  // ==========================================
+
   if (isProcessing) {
-    return <ProcessingStatus steps={processingSteps} />
+    return (
+      <ProcessingStatus
+        steps={processingSteps}
+      />
+    )
   }
+
+  // ==========================================
+  // MAIN UI
+  // ==========================================
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-slide-up">
 
       {/* Header */}
       <div className="flex items-center justify-between">
+
         <div>
+
           <h1 className="text-4xl font-bold font-heading gradient-text mb-2">
             Motor Vibration Diagnosis
           </h1>
@@ -158,33 +254,54 @@ function Diagnosis() {
           <p className="text-gray-500">
             Upload vibration patterns and motor information for AI-powered analysis
           </p>
+
         </div>
 
         <button
           onClick={handleReset}
           className="btn-secondary flex items-center space-x-2"
         >
+
           <RotateCcw className="w-4 h-4" />
-          <span>Reset</span>
+
+          <span>
+            Reset
+          </span>
+
         </button>
+
       </div>
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded-xl backdrop-blur-sm">
+
+        <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded-xl">
+
           <div className="flex items-center space-x-2">
+
             <AlertTriangle className="w-5 h-5" />
-            <span>{error}</span>
+
+            <span>
+              {error}
+            </span>
+
           </div>
+
         </div>
+
       )}
 
       {/* Motor Information */}
       <div className="card">
 
         <h2 className="text-2xl font-bold font-heading mb-6 gradient-text flex items-center space-x-2">
+
           <Cpu className="w-6 h-6 text-[#2563EB]" />
-          <span>Motor Information</span>
+
+          <span>
+            Motor Information
+          </span>
+
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -219,10 +336,13 @@ function Diagnosis() {
               type: 'number'
             }
           ].map(field => (
+
             <div key={field.key}>
 
               <label className="block text-sm font-medium text-gray-600 mb-2">
+
                 {field.label}
+
               </label>
 
               <input
@@ -239,9 +359,11 @@ function Diagnosis() {
               />
 
             </div>
+
           ))}
 
         </div>
+
       </div>
 
       {/* Input Cards */}
@@ -264,26 +386,30 @@ function Diagnosis() {
 
       </div>
 
-      {/* Analyze */}
+      {/* Analyze Button */}
       <div className="flex justify-center">
 
         <button
           onClick={handleAnalyze}
-          className="btn-primary px-12 py-4 text-xl font-bold font-heading shadow-2xl shadow-[#2563EB]/30 hover:shadow-[#2563EB]/50 animate-pulse-glow"
           disabled={isProcessing}
+          className="btn-primary px-12 py-4 text-xl font-bold font-heading shadow-2xl shadow-[#2563EB]/30 hover:shadow-[#2563EB]/50 animate-pulse-glow disabled:opacity-50 disabled:cursor-not-allowed"
         >
+
           Analyze Motor
+
         </button>
 
       </div>
 
-      {/* Demo Notice */}
+      {/* Demo Mode */}
       <div className="glass-card p-6 border border-[#F59E0B]/30">
 
         <div className="flex items-start space-x-3">
 
           <div className="w-10 h-10 rounded-full bg-[#F59E0B]/10 flex items-center justify-center flex-shrink-0">
+
             <Zap className="w-5 h-5 text-[#F59E0B]" />
+
           </div>
 
           <div>
