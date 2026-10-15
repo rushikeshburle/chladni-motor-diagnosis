@@ -1,4 +1,3 @@
-```jsx
 import React, { useRef, useState } from 'react'
 import {
   Upload,
@@ -272,4 +271,3 @@ function ImageUploader({ onData, data }) {
 }
 
 export default ImageUploader
-```

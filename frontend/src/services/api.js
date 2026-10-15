@@ -1,4 +1,3 @@
-```javascript
 import axios from 'axios'
 
 // Render / Vercel API URL
@@ -111,4 +110,3 @@ export const getStatistics = async () => {
 
 // Export Axios Client
 export default apiClient
-```
